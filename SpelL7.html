@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplikationsspel</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            text-align: center;
+            overflow: hidden;
+            background-color: #ffeb3b;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 80vh;
+            background: url('https://www.transparenttextures.com/patterns/bright-squares.png');
+            border: 5px solid #ff5722;
+        }
+        .falling-number {
+            position: absolute;
+            font-size: 28px;
+            background: #4caf50;
+            color: white;
+            padding: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            user-select: none;
+        }
+        #question {
+            font-size: 36px;
+            margin-top: 20px;
+            color: #ff5722;
+        }
+        #score, #highscore-list {
+            font-size: 24px;
+        }
+        #game-over {
+            display: none;
+            font-size: 30px;
+            color: red;
+        }
+        #reward {
+            display: none;
+            width: 200px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multiplikationsäventyret!</h1>
+    <p id="question">Laddar fråga...</p>
+    <p id="score">Poäng: 0</p>
+    <h2>Highscore-lista</h2>
+    <ul id="highscore-list"></ul>
+    <p id="game-over">Spelet är över! Skriv ditt namn:</p>
+    <input type="text" id="player-name" placeholder="Ditt namn" style="display:none;">
+    <button id="restart-btn" style="display:none;">Starta om</button>
+    <img id="reward" src="" alt="Belöning">
+    <div id="game-container"></div>
+    
+    <script>
+        let score = 0;
+        let incorrectAttempts = 0;
+        let correctAnswer;
+        let timer;
+        let correctCount = 0;
+        let highScores = [];
+        const rewardImages = [
+            'https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif',
+            'https://media.giphy.com/media/l4FGGaRZ0iJ5l1VRG/giphy.gif',
+            'https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif'
+        ];
+
+        function generateQuestion() {
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            correctAnswer = num1 * num2;
+            document.getElementById('question').innerText = `${num1} × ${num2} = ?`;
+            generateFallingNumbers();
+            timer = new Date().getTime();
+        }
+
+        function generateFallingNumbers() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = '';
+            let answers = new Set();
+            answers.add(correctAnswer);
+
+            while (answers.size < 4) {
+                let wrongAnswer;
+                do {
+                    wrongAnswer = Math.floor(Math.random() * 100) + 1;
+                } while (answers.has(wrongAnswer));
+                answers.add(wrongAnswer);
+            }
+
+            [...answers].forEach(answer => {
+                let div = document.createElement('div');
+                div.classList.add('falling-number');
+                div.innerText = answer;
+                div.style.left = Math.random() * 90 + 'vw';
+                container.appendChild(div);
+                
+                let topPos = 0;
+                let fallInterval = setInterval(() => {
+                    topPos += 1.2;
+                    div.style.top = topPos + 'px';
+                    if (topPos > window.innerHeight - 150) {
+                        clearInterval(fallInterval);
+                        div.style.top = '0px';
+                    }
+                }, 40);
+                
+                div.addEventListener('click', () => {
+                    if (parseInt(div.innerText) === correctAnswer) {
+                        clearInterval(fallInterval);
+                        let reactionTime = (new Date().getTime() - timer) / 1000;
+                        let points = Math.max(1, 10 - Math.floor(reactionTime));
+                        score = Math.min(100, score + points);
+                        document.getElementById('score').innerText = `Poäng: ${score}`;
+                        correctCount++;
+                        if (correctCount === 10) {
+                            showReward();
+                        } else {
+                            generateQuestion();
+                        }
+                    } else {
+                        incorrectAttempts++;
+                        if (incorrectAttempts >= 3) {
+                            gameOver();
+                        }
+                    }
+                });
+            });
+        }
+
+        function gameOver() {
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('player-name').style.display = 'block';
+            document.getElementById('restart-btn').style.display = 'block';
+        }
+
+        function restartGame() {
+            let playerName = document.getElementById('player-name').value;
+            if (playerName) {
+                highScores.push({ name: playerName, score: score });
+                highScores.sort((a, b) => b.score - a.score);
+                updateHighscoreList();
+            }
+            score = 0;
+            incorrectAttempts = 0;
+            correctCount = 0;
+            document.getElementById('score').innerText = `Poäng: ${score}`;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('player-name').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'none';
+            generateQuestion();
+        }
+
+        function updateHighscoreList() {
+            const list = document.getElementById('highscore-list');
+            list.innerHTML = '';
+            highScores.forEach(entry => {
+                let li = document.createElement('li');
+                li.innerText = `${entry.name}: ${entry.score} poäng`;
+                list.appendChild(li);
+            });
+        }
+
+        function showReward() {
+            const randomImage = rewardImages[Math.floor(Math.random() * rewardImages.length)];
+            document.getElementById('reward').src = randomImage;
+            document.getElementById('reward').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('reward').style.display = 'none';
+                correctCount = 0;
+                generateQuestion();
+            }, 3000);
+        }
+
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
+        generateQuestion();
+    </script>
+</body>
+</html>
